@@ -22,15 +22,11 @@ public class ApiController {
     private final GameRepo games; private final MarketService market; private final RefreshService refresh;
     private final AnalyticsService analytics; private final List<OddsProvider> providers;
     private final ClvService clv; private final ImportService imports; private final TeamXgRepo xgRepo;
-    private final BankrollService bankroll;
-    private final MatchdayPlanService matchdayPlans;
 
     public ApiController(GameRepo g, MarketService m, RefreshService r, AnalyticsService a, List<OddsProvider> p,
-                         ClvService clv, ImportService imports, TeamXgRepo xgRepo, BankrollService bankroll, MatchdayPlanService matchdayPlans) {
+                         ClvService clv, ImportService imports, TeamXgRepo xgRepo) {
         this.clv = clv; this.imports = imports; this.xgRepo = xgRepo;
         this.games = g; this.market = m; this.refresh = r; this.analytics = a; this.providers = p;
-        this.bankroll = bankroll;
-        this.matchdayPlans = matchdayPlans;
     }
 
     @GetMapping("/health")
@@ -95,11 +91,6 @@ public class ApiController {
 
     @GetMapping("/suggestions") public Map<String, Object> suggestions() { return market.suggestions(); }
 
-    @GetMapping("/bankroll") public Map<String, Object> bankroll() { return bankroll.get(); }
-    @PutMapping("/bankroll/settings") public Map<String, Object> bankrollSettings(@RequestBody Map<String, Object> input) { return bankroll.update(input); }
-    @PostMapping("/bankroll/transactions") public Map<String, Object> bankrollTransaction(@RequestBody Map<String, Object> input) { return bankroll.transaction(input); }
-    @GetMapping("/matchday-plan") public Map<String,Object> matchdayPlan(@RequestParam(required = false) String date) { return matchdayPlans.plan(date(date)); }
-
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Object>> doRefresh() {
         try { return ResponseEntity.ok(refresh.refresh()); }
@@ -112,11 +103,6 @@ public class ApiController {
         try { return ResponseEntity.ok(analytics.backtest(warmup)); }
         catch (IllegalStateException busy) { return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", busy.getMessage())); }
     }
-    @PostMapping("/backtest/compare-models") public ResponseEntity<?> compareModels(@RequestParam(defaultValue = "100") int warmup) {
-        if (warmup < 20 || warmup > 2000) throw new BadRequest("warmup must be 20-2000");
-        try { return ResponseEntity.ok(analytics.compareModels(warmup)); } catch (IllegalStateException busy) { return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", busy.getMessage())); }
-    }
-    @GetMapping("/backtest/runs") public List<fi.nhl.analytics.domain.BacktestRunEntity> backtestRuns() { return analytics.backtestRuns(); }
 
     @GetMapping("/clv") public Map<String, Object> clv() { return clv.report(); }
 

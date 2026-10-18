@@ -142,7 +142,7 @@ public class MarketService {
             for (Map<String, Object> s : sels) {
                 if (!String.valueOf(s.get("classification")).startsWith("POSITIVE_EV")) continue;
                 legs.add(new fi.nhl.analytics.core.Combos.Leg((Long) g.get("gameId"),
-                        g.get("home") + " - " + g.get("away") + " - " + s.get("selection") + " (" + market + ")", market,
+                        g.get("away") + " @ " + g.get("home") + " - " + s.get("selection") + " (" + market + ")", market,
                         (Double) s.get("modelProb"), (Double) s.get("bestOdds"), nEff, (Double) s.get("marketProb"), (Double) s.get("evPct")));
             }
         }
@@ -197,7 +197,7 @@ public class MarketService {
                     double se = 100.0 * odds * Math.sqrt(p * (1 - p) / nEff), z = se > 0 ? ev / se : 0;
                     Double mp = (Double) s.get("marketProb"), edge = (Double) s.get("edgePp");
                     Map<String, Object> it = new LinkedHashMap<>();
-                    it.put("gameId", g.get("gameId")); it.put("startUtc", g.get("startUtc")); it.put("game", g.get("home") + " - " + g.get("away"));
+                    it.put("gameId", g.get("gameId")); it.put("startUtc", g.get("startUtc")); it.put("game", g.get("away") + " @ " + g.get("home"));
                     it.put("market", market); it.put("selection", sel);
                     it.put("label", "HOME".equals(sel) ? g.get("home") : "AWAY".equals(sel) ? g.get("away") : "Tasapeli");
                     it.put("modelProb", p); it.put("bestOdds", odds); it.put("provider", s.get("provider")); it.put("oddsAt", s.get("oddsAt"));

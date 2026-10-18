@@ -59,11 +59,6 @@ class CoreTest {
         assertTrue(rep.predicted() > 0 && rep.predicted() <= 160);
         assertTrue(rep.regBrier() >= 0 && rep.mlBrier() >= 0);
     }
-    @Test void v2ComparisonKeepsPromotionGateClosedWithoutAdequateSample() {
-        List<GameResult> h = new ArrayList<>();
-        for (int i = 0; i < 80; i++) h.add(GameResult.fromFinal(D.plusDays(i), "A", "B", 3, 2, "REG"));
-        assertFalse(Backtest.compareTieCalibration(h, 10, 5, 20).v2EligibleForPromotion());
-    }
     @Test void teamNameMatchingIsAccentInsensitive() {
         assertTrue(TeamNames.matches("Montreal Canadiens", "Montréal Canadiens", "Canadiens"));
         assertFalse(TeamNames.matches("Boston Bruins", "Montréal Canadiens", "Canadiens"));

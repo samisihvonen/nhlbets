@@ -24,11 +24,4 @@ public final class Repos {
         boolean existsByPredictionId(long predictionId);
         java.util.Optional<OutcomeEntity> findByGameId(long gameId);
     }
-    public interface BankrollSettingsRepo extends JpaRepository<BankrollSettingsEntity, Long> {}
-    public interface BankrollLedgerRepo extends JpaRepository<BankrollLedgerEntity, Long> {
-        List<BankrollLedgerEntity> findAllByOrderByCreatedAtDesc();
-    }
-    public interface BacktestRunRepo extends JpaRepository<BacktestRunEntity, Long> {
-        List<BacktestRunEntity> findTop50ByOrderByCreatedAtDesc();
-    }
 }

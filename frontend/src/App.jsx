@@ -2,11 +2,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { api, Card, Badge, Empty, Stat, ErrorBar, loadAll, fmtTime, pct, num, signed, LABEL, REG_LABEL } from "./ui.jsx";
 import History from "./pages/History.jsx";
 import Suggestions from "./pages/Suggestions.jsx";
-import Bankroll from "./pages/Bankroll.jsx";
 
-const PAGES = [["dashboard", "Yleiskatsaus"], ["suggestions", "Ehdotukset"], ["history", "Historia"], ["bankroll", "Kassa"]];
+const PAGES = [["dashboard", "Yleiskatsaus"], ["suggestions", "Ehdotukset"], ["history", "Historia"]];
 const pageFromHash = () => {
-  const h = window.location.hash.replace(/^#\/?/, "").replace(/\/$/, "").split("?")[0];
+  const h = window.location.hash.replace(/^#\/?/, "");
   return PAGES.some(([k]) => k === h) ? h : "dashboard";
 };
 
@@ -17,7 +16,7 @@ function MarketTable({ rows, market }) {
       {rows.map((g) => (
         <div key={g.gameId} className="rounded-lg border border-slate-800 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-medium">{g.home} – {g.away}</div>
+            <div className="font-medium">{g.away} @ {g.home}</div>
             <div className="text-sm text-slate-400">{fmtTime(g.startUtc)} · maalivahti: {g.goalie.status}</div>
           </div>
           {!g.hasPrediction ? (
@@ -45,7 +44,7 @@ function MarketTable({ rows, market }) {
               </table>
               {g.xg && (
                 <p className="mt-1 text-xs text-slate-400">
-                  xG/ottelu (konteksti): {g.home} {num(g.xg.home.xgfPerGame, 2)}–{num(g.xg.home.xgaPerGame, 2)} · {g.away} {num(g.xg.away.xgfPerGame, 2)}–{num(g.xg.away.xgaPerGame, 2)} (tehdyt–päästetyt, kausi {g.xg.home.season}; ei mallissa)
+                  xG/ottelu (konteksti): {g.away} {num(g.xg.away.xgfPerGame, 2)}–{num(g.xg.away.xgaPerGame, 2)} · {g.home} {num(g.xg.home.xgfPerGame, 2)}–{num(g.xg.home.xgaPerGame, 2)} (tehdyt–päästetyt, kausi {g.xg.home.season}; ei mallissa)
                 </p>
               )}
               <p className="mt-1 text-xs text-slate-500">Malli {g.modelVersion}{g.experimental ? " (kokeellinen, ei validoitu)" : ""} · {g.dataQuality}</p>
@@ -151,12 +150,6 @@ export default function App() {
     try { setReport(await api("/refresh", { method: "POST" })); } catch (e) { setError(e.message); }
     setBusy(false); setReloadKey((k) => k + 1);
   };
-  const navigate = (event, nextPage) => {
-    event.preventDefault();
-    // Set state immediately; hashchange remains useful for browser back/forward navigation.
-    window.location.hash = `/${nextPage}`;
-    setPage(nextPage);
-  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4">
@@ -172,7 +165,7 @@ export default function App() {
 
       <nav className="flex gap-1 border-b border-slate-800" aria-label="Sivut">
         {PAGES.map(([k, label]) => (
-          <a key={k} href={`#/${k}`} onClick={(event) => navigate(event, k)} aria-current={page === k ? "page" : undefined}
+          <a key={k} href={`#/${k}`} aria-current={page === k ? "page" : undefined}
             className={`rounded-t px-4 py-2 text-sm ${page === k ? "bg-slate-800 font-semibold text-white" : "text-slate-400 hover:text-white"}`}>{label}</a>
         ))}
       </nav>
@@ -191,7 +184,6 @@ export default function App() {
       {page === "dashboard" && <Dashboard reloadKey={reloadKey} />}
       {page === "suggestions" && <Suggestions reloadKey={reloadKey} />}
       {page === "history" && <History reloadKey={reloadKey} />}
-      {page === "bankroll" && <Bankroll />}
     </div>
   );
 }

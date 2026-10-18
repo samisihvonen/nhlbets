@@ -12,6 +12,10 @@ Ei vedonlyöntiä, panoksia, bankrollia eikä euromääräisiä tuloksia.
   - `web/ApiController` REST-rajapinta `/api/...`
 - `frontend/` React + Vite + Tailwind (tumma teema, aikavyöhyke Europe/Helsinki)
 
+## GitHub
+`.env` (avaimet), `backend/data/` (tietokanta, voi sisältää kassa- ja vetotietoja), `node_modules/` ja ladatut CSV-aineistot on suljettu pois `.gitignore`-tiedostolla.
+Frontendin build (`backend/src/main/resources/static/`) generoidaan komennolla `npm run build`, joten sitä ei versioida. Älä koskaan committaa API-avaimia; jos avain vuotaa, vaihda se heti.
+
 ## Sivut
 Dashboard on kolmisivuinen (osoitteet `#/dashboard`, `#/suggestions`, `#/history`):
 - **Yleiskatsaus:** tilastot, moneyline- ja 1X2-ennusteet, yhdistelmät, tarjoajien tila.

@@ -12,7 +12,6 @@ public final class Backtest {
                          double regBrier, double regLogLoss, double mlBrier, double mlLogLoss,
                          double regBrierUniform, double mlBrierUniform, List<Bucket> mlHomeCalibration,
                          String note) {}
-    public record Comparison(Report v1, Report v2, boolean v2EligibleForPromotion, String decision) {}
 
     public static Report run(List<GameResult> games, ScoreModel model, int warmup) {
         List<GameResult> s = new ArrayList<>(games);
@@ -38,24 +37,13 @@ public final class Backtest {
         List<Bucket> cal = new ArrayList<>();
         for (int b = 0; b < 10; b++) if (bn[b] > 0) cal.add(new Bucket(b / 10.0, (b + 1) / 10.0, (int) bn[b], bp[b] / bn[b], bo[b] / bn[b]));
         double nan = Double.NaN;
-        return new Report(model.version(), s.size(), np, skipped,
+        return new Report(ScoreModel.VERSION, s.size(), np, skipped,
                 np == 0 ? nan : (double) regHit / np, Metrics.wilson(regHit, np),
                 np == 0 ? nan : (double) mlHit / np, Metrics.wilson(mlHit, np),
                 np == 0 ? nan : rb / np, np == 0 ? nan : rl / np, np == 0 ? nan : mb / np, np == 0 ? nan : ml / np,
                 2.0 / 3.0, 0.5, cal,
                 "Model-only backtest on stored NHL results. No historical bookmaker odds were used, so no EV/return is evaluated. "
                 + "Brier is multiclass (sum over classes, range 0-2); uniform-guess baselines are 2/3 (1X2) and 0.5 (moneyline).");
-    }
-
-    /** Same historical games and warmup for both models; this is not a market/return validation. */
-    public static Comparison compareTieCalibration(List<GameResult> games, double shrinkGames, int minGames, int warmup) {
-        Report v1 = run(games, new ScoreModel(shrinkGames, minGames), warmup);
-        Report v2 = run(games, ScoreModel.tieCalibratedV2(shrinkGames, minGames), warmup);
-        boolean promote = v2.predicted() >= 200 && Double.isFinite(v2.regBrier()) && Double.isFinite(v2.regLogLoss())
-                && v2.regBrier() < v1.regBrier() && v2.regLogLoss() < v1.regLogLoss();
-        String decision = promote ? "V2 improves both regulation Brier and log loss on this walk-forward sample; review calibration before activation."
-                : "V2 remains experimental: it needs at least 200 predictions and strict improvement in both 1X2 Brier and log loss.";
-        return new Comparison(v1, v2, promote, decision);
     }
 
     static int argmax(double[] p) { int b = 0; for (int i = 1; i < p.length; i++) if (p[i] > p[b]) b = i; return b; }

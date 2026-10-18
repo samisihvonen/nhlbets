@@ -74,7 +74,7 @@ function ManualOdds({ onSaved }) {
       <div className="flex flex-wrap items-end gap-2 text-sm">
         <select value={f.gameId} onChange={(e) => setF({ ...f, gameId: e.target.value })} className="rounded bg-slate-800 p-1" aria-label="Ottelu">
           <option value="">Valitse ottelu…</option>
-          {games.map((g) => <option key={g.gameId} value={g.gameId}>{g.home} – {g.away} · {fmtTime(g.startUtc)}</option>)}
+          {games.map((g) => <option key={g.gameId} value={g.gameId}>{g.away} @ {g.home} · {fmtTime(g.startUtc)}</option>)}
         </select>
         <select value={f.market} onChange={(e) => setF({ ...f, market: e.target.value })} className="rounded bg-slate-800 p-1" aria-label="Markkina">
           <option value="MONEYLINE">Moneyline (sis. JA/VL)</option><option value="REG_1X2">1X2 (60 min)</option>

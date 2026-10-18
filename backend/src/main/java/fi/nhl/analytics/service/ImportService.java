@@ -151,7 +151,7 @@ public class ImportService {
         }
         tx.executeWithoutResult(t -> odds.saveAll(rows));
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("stored", rows.size()); out.put("provider", "manual:" + name); out.put("game", g.homeName + " - " + g.awayName);
+        out.put("stored", rows.size()); out.put("provider", "manual:" + name); out.put("game", g.awayName + " @ " + g.homeName);
         out.put("note", "Entered by hand; treated as fresh until the maximum odds age passes, then stale. Check the market definition at the bookmaker (OT/SO vs 60 min).");
         return out;
     }

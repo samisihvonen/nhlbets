@@ -9,22 +9,16 @@ import java.util.*;
  */
 public final class ScoreModel {
     public static final String VERSION = "poisson-shrunk-v1";
-    public static final String V2_VERSION = "poisson-shrunk-v2-tie-calibrated";
     private static final int MAXG = 12;
     private static final double OT_PRIOR_GAMES = 20, OT_TILT = 0.5;
-    private static final double TIE_PRIOR_GAMES = 40, TIE_PRIOR_RATE = .23;
 
     public record Prediction(double lambdaHome, double lambdaAway, double pHomeReg, double pDraw, double pAwayReg,
                              double pHomeMl, double pAwayMl, int gamesHome, int gamesAway) {}
 
     private final double shrinkGames;
     private final int minGames;
-    private final boolean calibrateTie;
 
-    public ScoreModel(double shrinkGames, int minGames) { this(shrinkGames, minGames, false); }
-    private ScoreModel(double shrinkGames, int minGames, boolean calibrateTie) { this.shrinkGames = shrinkGames; this.minGames = minGames; this.calibrateTie = calibrateTie; }
-    public static ScoreModel tieCalibratedV2(double shrinkGames, int minGames) { return new ScoreModel(shrinkGames, minGames, true); }
-    public String version() { return calibrateTie ? V2_VERSION : VERSION; }
+    public ScoreModel(double shrinkGames, int minGames) { this.shrinkGames = shrinkGames; this.minGames = minGames; }
 
     private static final class T { int gp; double gf, ga; }
 
@@ -57,11 +51,6 @@ public final class ScoreModel {
             if (i > j) pH += p; else if (i == j) pD += p; else pA += p;
         }
         pH /= tot; pD /= tot; pA /= tot;
-        if (calibrateTie) {
-            double targetTie = Math.max(.01, Math.min(.60, (ties + TIE_PRIOR_GAMES * TIE_PRIOR_RATE) / (n + TIE_PRIOR_GAMES)));
-            double nonDraw = 1 - pD;
-            if (nonDraw > 0) { pH = pH / nonDraw * (1 - targetTie); pA = pA / nonDraw * (1 - targetTie); pD = targetTie; }
-        }
 
         double rate = (homeOt + OT_PRIOR_GAMES * 0.5) / (ties + OT_PRIOR_GAMES);
         double pHomeOt = Math.min(0.65, Math.max(0.35, rate + OT_TILT * (lh / (lh + la) - 0.5)));

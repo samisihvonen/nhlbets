@@ -19,12 +19,11 @@ import org.springframework.stereotype.Service;
 public class AnalyticsService {
     private final GameRepo games; private final PredictionRepo preds; private final OutcomeRepo outcomes;
     private final RefreshService refresh; private final MarketService market; private final AppProperties props; private final OddsRepo oddsRepo;
-    private final BacktestRunRepo backtestRuns;
     private final AtomicBoolean backtesting = new AtomicBoolean(false);
 
-    public AnalyticsService(GameRepo g, PredictionRepo p, OutcomeRepo o, RefreshService r, MarketService m, AppProperties props, OddsRepo oddsRepo, BacktestRunRepo backtestRuns) {
+    public AnalyticsService(GameRepo g, PredictionRepo p, OutcomeRepo o, RefreshService r, MarketService m, AppProperties props, OddsRepo oddsRepo) {
         this.oddsRepo = oddsRepo;
-        this.games = g; this.preds = p; this.outcomes = o; this.refresh = r; this.market = m; this.props = props; this.backtestRuns = backtestRuns;
+        this.games = g; this.preds = p; this.outcomes = o; this.refresh = r; this.market = m; this.props = props;
     }
 
     private static double mean(List<Double> xs) { return xs.isEmpty() ? Double.NaN : xs.stream().mapToDouble(d -> d).sum() / xs.size(); }
@@ -138,8 +137,8 @@ public class AnalyticsService {
             for (int i = 0; i < odds.length; i++) if (odds[i] != null && MarketMath.evPct(probs[i], odds[i]) >= props.minEvPct()) flagged++;
             boolean done = o != null && "SETTLED".equals(o.status);
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("gameId", g.id); m.put("startUtc", g.startUtc); m.put("game", g.homeName + " - " + g.awayName); m.put("state", g.state);
-            m.put("score", g.homeScore == null ? null : g.homeScore + "-" + g.awayScore + (g.lastPeriodType == null || "REG".equals(g.lastPeriodType) ? "" : " " + g.lastPeriodType));
+            m.put("gameId", g.id); m.put("startUtc", g.startUtc); m.put("game", g.awayName + " @ " + g.homeName); m.put("state", g.state);
+            m.put("score", g.homeScore == null ? null : g.awayScore + "-" + g.homeScore + (g.lastPeriodType == null || "REG".equals(g.lastPeriodType) ? "" : " " + g.lastPeriodType));
             m.put("status", st); m.put("snapshotAt", p.createdAt); m.put("modelVersion", p.modelVersion);
             m.put("regProbs", List.of(reg[0], reg[1], reg[2])); m.put("mlProbs", List.of(ml[0], ml[1]));
             m.put("regPick", argmax(reg)); m.put("mlPick", argmax(ml));
@@ -161,18 +160,9 @@ public class AnalyticsService {
         try {
             List<GameResult> all = new ArrayList<>();
             for (GameEntity g : games.findByStateOrderByStartUtc(GameState.FINAL)) { GameResult r = RefreshService.toResult(g); if (r != null) all.add(r); }
-            Backtest.Report report = Backtest.run(all, refresh.model(), warmup); saveRun(report, warmup); return report;
+            return Backtest.run(all, refresh.model(), warmup);
         } finally { backtesting.set(false); }
     }
-
-    public Backtest.Comparison compareModels(int warmup) {
-        if (!backtesting.compareAndSet(false, true)) throw new IllegalStateException("A backtest is already running");
-        try { List<GameResult> all = finalResults(); return Backtest.compareTieCalibration(all, 10, props.minGamesPerTeam(), warmup); }
-        finally { backtesting.set(false); }
-    }
-    public List<BacktestRunEntity> backtestRuns() { return backtestRuns.findTop50ByOrderByCreatedAtDesc(); }
-    private List<GameResult> finalResults() { List<GameResult> all = new ArrayList<>(); for (GameEntity g : games.findByStateOrderByStartUtc(GameState.FINAL)) { GameResult r = RefreshService.toResult(g); if (r != null) all.add(r); } return all; }
-    private void saveRun(Backtest.Report r, int warmup) { BacktestRunEntity e = new BacktestRunEntity(); e.createdAt=Instant.now(); e.modelVersion=r.modelVersion(); e.warmup=warmup; e.games=r.games(); e.predicted=r.predicted(); e.regBrier=nz(r.regBrier()); e.regLogLoss=nz(r.regLogLoss()); e.mlBrier=nz(r.mlBrier()); e.mlLogLoss=nz(r.mlLogLoss()); e.note=r.note(); backtestRuns.save(e); }
 
     public MarketBacktest.Report marketBacktest(int warmup, double minEvPct, String source) {
         if (!backtesting.compareAndSet(false, true)) throw new IllegalStateException("A backtest is already running");
