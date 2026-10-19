@@ -1,4 +1,4 @@
-package fi.nhl.analytics.web;
+﻿package fi.nhl.analytics.web;
 
 import fi.nhl.analytics.domain.GameEntity;
 import fi.nhl.analytics.domain.GameState;
@@ -29,7 +29,7 @@ public class ApiController {
         this.games = g; this.market = m; this.refresh = r; this.analytics = a; this.providers = p;
     }
 
-    @GetMapping("/health")
+}
     public Map<String, Object> health() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("status", "UP"); m.put("serverTime", Instant.now()); m.put("games", games.count());
@@ -50,7 +50,7 @@ public class ApiController {
         return "UNKNOWN";
     }
 
-    @GetMapping("/games")
+}
     public List<Map<String, Object>> games(@RequestParam(defaultValue = "SCHEDULED") String state) {
         GameState gs;
         try { gs = GameState.valueOf(state.toUpperCase()); } catch (IllegalArgumentException e) { throw new BadRequest("Unknown state: " + state); }
@@ -59,28 +59,28 @@ public class ApiController {
         return out;
     }
 
-    @GetMapping("/predictions/moneyline") public List<Map<String, Object>> moneyline() { return market.upcoming("MONEYLINE"); }
-    @GetMapping("/predictions/regulation") public List<Map<String, Object>> regulation() { return market.upcoming("REG_1X2"); }
-    @GetMapping("/combinations")
+}
+}
+}
     public List<Map<String, Object>> combinations(@RequestParam(defaultValue = "2") int maxLegs) {
         if (maxLegs < 2 || maxLegs > 3) throw new BadRequest("maxLegs must be 2 or 3");
         return market.combinations(maxLegs);
     }
 
-    @GetMapping("/lineups")
+}
     public Map<String, Object> lineups() {
         return Map.of("items", List.of(), "status", "NOT_AVAILABLE",
                 "detail", "No lineup, injury or goalie source is integrated. All goalie/injury status is UNKNOWN and not used by the model.");
     }
 
-    @GetMapping("/stats/summary") public Map<String, Object> summary() { return analytics.summary(); }
+}
 
-    @GetMapping("/stats/accuracy")
+}
     public Map<String, Object> accuracy(@RequestParam(required = false) String from, @RequestParam(required = false) String to) {
         return analytics.accuracy(date(from), date(to));
     }
 
-    @GetMapping("/history")
+}
     public List<Map<String, Object>> history(@RequestParam(required = false) String from, @RequestParam(required = false) String to,
                                              @RequestParam(defaultValue = "100") int limit, @RequestParam(defaultValue = "ALL") String status) {
         if (limit < 1 || limit > 500) throw new BadRequest("limit must be 1-500");
@@ -89,7 +89,7 @@ public class ApiController {
         return analytics.history(date(from), date(to), limit, st);
     }
 
-    @GetMapping("/suggestions") public Map<String, Object> suggestions() { return market.suggestions(); }
+}
 
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Object>> doRefresh() {
@@ -104,9 +104,9 @@ public class ApiController {
         catch (IllegalStateException busy) { return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", busy.getMessage())); }
     }
 
-    @GetMapping("/clv") public Map<String, Object> clv() { return clv.report(); }
+}
 
-    @GetMapping("/xg")
+}
     public List<fi.nhl.analytics.domain.TeamXgEntity> xg() {
         List<fi.nhl.analytics.domain.TeamXgEntity> l = new ArrayList<>(xgRepo.findAll());
         l.sort(Comparator.comparingInt((fi.nhl.analytics.domain.TeamXgEntity x) -> x.season).reversed().thenComparing(x -> x.team));
@@ -164,4 +164,12 @@ public class ApiController {
         org.slf4j.LoggerFactory.getLogger(ApiController.class).error("Unhandled API error", e);
         return ResponseEntity.status(500).body(Map.of("error", "Internal error (" + e.getClass().getSimpleName() + "); see server log"));
     }
+}
+
+}
+}
+}
+
+
+    @GetMapping("/api/matchday-plan") public java.util.Map<String,Object> matchdayPlan(@org.springframework.web.bind.annotation.RequestParam(required=false) String date) { try { return matchday.plan(date==null||date.isBlank()?null:java.time.LocalDate.parse(date)); } catch(Exception e){ throw new BadRequest(e.getMessage()); } }
 }

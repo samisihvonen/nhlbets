@@ -313,3 +313,28 @@ Purpose: for every matchday, one transparent plan describing **whether and how**
 6. Persist backtest runs and show Brier/CLV trends over time.
 7. Add game-level timestamped xG and test it as a feature.
 8. Build the Daily round plan (16.10) in PAPER mode first and review its hypothetical results and CLV by lead time for several weeks before relying on it.
+Tässä on pyytämäsi käännös englanniksi:
+
+Fix summary report counters
+
+Separate snapshots and individual matches, and correctly count pending and voided matches.
+
+Unify matchday timezone
+
+Use the same date rule in history, settlement, and backtesting.
+
+Add parameter and data validation
+
+Prevent negative warmup, invalid settings, and invalid probabilities.
+
+Expand the calibration report
+
+Report home win, away win, and 1X2 classes separately.
+
+Add automated regression tests
+
+Test edge cases, timezones, missing odds, and snapshot selection.
+
+Optimize database queries
+
+Move filtering to the database and add pagination to the history report.

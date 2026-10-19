@@ -1,133 +1,146 @@
-# NHL Prediction & Value Analytics (Spring Boot + React)
+NHL Prediction & Value Analytics (Spring Boot + React)
+Decision-support and research tool: fetches real NHL data, calculates match probabilities (Poisson score model), compares them with odds (EV, edge), settles predictions automatically, and measures its own accuracy.
+No betting, stakes, bankroll, or monetary results.
 
-Päätöstuki- ja tutkimustyökalu: hakee oikeaa NHL-dataa, laskee otteluille todennäköisyydet (Poisson-pistemalli),
-vertaa niitä kertoimiin (EV, edge), selvittää ennusteet automaattisesti ja mittaa oman tarkkuutensa.
-Ei vedonlyöntiä, panoksia, bankrollia eikä euromääräisiä tuloksia.
+Structure
+backend/ Spring Boot 3.3 (Java 17+), Spring Data JPA, H2 (file-based database backend/data/)
 
-## Rakenne
-- `backend/` Spring Boot 3.3 (Java 17+), Spring Data JPA, H2 (tiedostotietokanta `backend/data/`)
-  - `core/` puhdas Java: `ScoreModel`, `MarketMath`, `Metrics`, `Backtest`, `GameResult`, `TeamNames`
-  - `provider/` `NhlClient`, `OddsApiProvider` (The Odds API), `Veikkaus`/`Paf` (EI integroitu, raportoi tilansa)
-  - `service/` `RefreshService` (haku, ennusteet, selvitys), `MarketService`, `AnalyticsService`, `SchedulerJob`
-  - `web/ApiController` REST-rajapinta `/api/...`
-- `frontend/` React + Vite + Tailwind (tumma teema, aikavyöhyke Europe/Helsinki)
+core/ pure Java: ScoreModel, MarketMath, Metrics, Backtest, GameResult, TeamNames
 
-## GitHub
-`.env` (avaimet), `backend/data/` (tietokanta, voi sisältää kassa- ja vetotietoja), `node_modules/` ja ladatut CSV-aineistot on suljettu pois `.gitignore`-tiedostolla.
-Frontendin build (`backend/src/main/resources/static/`) generoidaan komennolla `npm run build`, joten sitä ei versioida. Älä koskaan committaa API-avaimia; jos avain vuotaa, vaihda se heti.
+provider/ NhlClient, OddsApiProvider (The Odds API), Veikkaus/Paf (NOT integrated, reports its status)
 
-## Sivut
-Dashboard on kolmisivuinen (osoitteet `#/dashboard`, `#/suggestions`, `#/history`):
-- **Yleiskatsaus:** tilastot, moneyline- ja 1X2-ennusteet, yhdistelmät, tarjoajien tila.
-- **Ehdotukset:** moneyline- ja 1X2-ehdokkaat järjestettynä näytön vahvuuden (z = EV / keskivirhe) mukaan, perusteluineen. `GET /api/suggestions`.
-  Ehdokkaat eivät ole suosituksia: kun malli on kokeellinen, suositus on `NO_RECOMMENDATION_EXPERIMENTAL_MODEL`. Tyhjä lista on usein oikea tulos.
-- **Historia:** ennusteet ja selvitykset (suodatus päivän ja tilan mukaan: kaikki/selvitetyt/odottavat/mitätöidyt), tarkkuus ja kalibrointi, CLV, CSV-tuonnit ja backtestit. `GET /api/history?status=`.
+service/ RefreshService (fetching, predictions, settlement), MarketService, AnalyticsService, SchedulerJob
 
-## Ajaminen (Windows / Linux)
-Vaatii: JDK 17+, Maven 3.9+, Node 18+.
+web/ApiController REST API /api/...
 
-    # 1) Frontend -> buildataan backendin static-kansioon
-    cd frontend
-    npm install
-    npm run build
+frontend/ React + Vite + Tailwind (dark mode, timezone Europe/Helsinki)
 
-    # 2) Backend (luo tietokannan automaattisesti)
-    cd ../backend
-    mvn spring-boot:run
+GitHub
+.env (keys), backend/data/ (database, may contain bankroll and bet data), node_modules/, and downloaded CSV datasets are excluded using .gitignore.
+The frontend build (backend/src/main/resources/static/) is generated with the npm run build command, so it is not version-controlled. Never commit API keys; if a key leaks, rotate it immediately.
 
-Avaa http://localhost:8080 ja paina "Refresh Data & Settle Predictions". Ensimmäinen päivitys hakee
-kauden otteluhistorian (`BACKFILL_FROM`) viikko kerrallaan, joten se kestää hetken.
+Continuous Integration (GitHub Actions)
+.github/workflows/ci.yml runs on every push and pull request: mvn test, frontend build, and packaging (jar downloadable from the Actions page for 7 days). The workflow does not require secrets; do not add API keys to it.
 
-Kehitystila: `mvn spring-boot:run` + `cd frontend && npm run dev` (http://localhost:5173, proxy -> 8080).
+Pages
+The dashboard has three pages (routes #/dashboard, #/suggestions, #/history):
 
-Valinnaiset asetukset: kopioi `.env.example` nimelle `.env` (projektin juureen tai `backend/`-kansioon), täytä `ODDS_API_KEY=avaimesi` ja **käynnistä sovellus uudelleen**.
-Vaihtoehtoisesti ympäristömuuttuja samassa terminaalissa kuin `mvn spring-boot:run`: PowerShell `$env:ODDS_API_KEY="avaimesi"`, Linux `export ODDS_API_KEY=avaimesi`.
-Tarkista tila: http://localhost:8080/api/health, tarjoajan `the-odds-api` tilan pitää olla CONFIGURED.
+Overview: statistics, moneyline and 1X2 predictions, combinations, provider status.
 
-## Testit ja backtest
-    cd backend && mvn test              # JUnit: EV, normalisointi, 1X2/ML, jatkoaika, leakage, mallin todennäköisyydet
-    curl -X POST "http://localhost:8080/api/backtest?warmup=100"   # walk-forward, vain malli (ei historiallisia kertoimia)
+Suggestions: moneyline and 1X2 candidates ranked by estimation strength (z = EV / standard error), with reasoning. GET /api/suggestions.
+Candidates are not recommendations: while the model is experimental, the recommendation is NO_RECOMMENDATION_EXPERIMENTAL_MODEL. An empty list is often the correct result.
 
-## API
-GET `/api/health`, `/api/games`, `/api/predictions/moneyline`, `/api/predictions/regulation`, `/api/combinations`,
-`/api/lineups`, `/api/stats/summary`, `/api/stats/accuracy?from=&to=`, `/api/history`, `/api/clv`, `/api/xg`;
-POST `/api/refresh`, `/api/backtest`, `/api/backtest/market`, `/api/import/odds`, `/api/import/xg`.
+History: predictions and settlements (filtered by date and status: all/settled/pending/voided), accuracy and calibration, CLV, CSV imports, and backtests. GET /api/history?status=.
 
-## Mallin tulkinta
-- Mallitodennäköisyys on estimaatti, ei varmuus. Ennusteet ovat **kokeellisia**, kunnes vähintään
-  `MIN_SETTLED_FOR_VALIDATION` ennustetta on selvitetty ja kalibraatio on tarkistettu.
-- EV % = 100·(p·kerroin − 1). Edge = malli − normalisoitu markkinatn. (prosenttiyksikköä). Ne mittaavat eri asioita.
-- Osumatarkkuus ei osoita arvoa. Vertaa Brier/log loss -lukuja tasajakaumaan (ML 0.500 / 0.693, 1X2 0.667 / 1.099).
-- Moneyline (sis. jatkoaika/SO) ja 60 min 1X2 pidetään aina erillään.
+Running (Windows / Linux)
+Requirements: JDK 17+, Maven 3.9+, Node 18+.
 
-## CLV-analyysi, historialliset kertoimet ja xG
+# 1) Frontend -> built into the backend's static folder
+cd frontend
+npm install
+npm run build
 
-### CLV (Closing Line Value)
-`GET /api/clv` (ja dashboardin "CLV-analyysi") vertaa mallin **liputettujen valintojen** hintaa (paras hinta ennen alkua tallennetussa
-snapshotissa) vertailutarjoajan sulkeutumislinjaan (oletus `pinnacle`, asetus `CLV_REFERENCE_PROVIDER`).
-- CLV % = (otettu kerroin / sulkeutumiskerroin − 1) · 100. Lisäksi sulkeutumis-EV %, jossa marginaali poistetaan **koko sulkeutumismarkkinasta**
-  (power-menetelmä), ei oletetulla kiinteällä 3 % marginaalilla.
-- Tulokset jaetaan markkinoittain ja **ajankohdan mukaan** (<3 h, 3–12 h, ≥12 h ennen alkua). Aloittavia maalivahteja ei vielä tunneta,
-  joten aikaisten ennusteiden CLV on tyypillisesti vääristynyt: lue ryhmät erikseen.
-- Mukana on mallin Brier-vertailu sulkeutumislinjaan selvitetyillä peleillä.
-- Sulkeutumislinja hyväksytään vain, jos se on enintään 180 min ennen alkua ja markkina on täydellinen. Muuten peliä ei lasketa mukaan.
-- Mitään oikeaa vetoa ei ole: "otettu hinta" on hypoteettinen. Paras hinta kaikista tarjoajista vs. yhden tarjoajan sulkeutuminen imartelee CLV:tä.
+# 2) Backend (creates the database automatically)
+cd ../backend
+mvn spring-boot:run
+Open http://localhost:8080 and click "Refresh Data & Settle Predictions". The first update fetches the season's game history (BACKFILL_FROM) one week at a time, so it will take a moment.
 
-### Markkinat
-Oletuksena haetaan vain `h2h` (moneyline, `ODDS_MARKETS=h2h`). Jos haluat kokeilla 60 min 1X2 -kertoimia, aseta `ODDS_MARKETS=h2h,h2h_3_way`; jos tarjoaja hylkää sen (HTTP 422), sovellus yrittää automaattisesti uudelleen pelkällä `h2h`:lla ja kertoo syyn päivitysraportissa. Ilman 3-way-kertoimia 1X2-sarake näyttää MARKET_UNAVAILABLE eikä sitä arvioida.
+Development mode: mvn spring-boot:run + cd frontend && npm run dev (http://localhost:5173, proxy -> 8080).
 
-### Yhdistelmäehdotukset
-`GET /api/combinations?maxLegs=2|3` yhdistää positiivisen EV:n valintoja **eri otteluista** (saman ottelun valintoja ei yhdistetä). Kullekin yhdistelmälle näytetään osumatodennäköisyys virhemarginaalilla,
-yhdistetty kerroin, mallin mukainen reilu kerroin, EV ± keskivirhe, z-luku, "näyttö" (WEAK/LOW/MODERATE) ja **EV jos markkina on oikeassa** (osoittaa, miten marginaali kertautuu).
-Toiminto ei lupaa tuottoa: osumatodennäköisyys laskee jokaisella valinnalla, riippumattomuus on oletus, keskivirhe ei sisällä mallivirhettä ja listan paras yhdistelmä on valikoitumisharhan vuoksi yliarvioitu.
-Kun malli on kokeellinen, suositus on aina `NO_RECOMMENDATION_EXPERIMENTAL_MODEL`.
+Optional settings: copy .env.example as .env (to the project root or the backend/ folder), fill in ODDS_API_KEY=your_key, and restart the application.
+Alternatively, set the environment variable in the same terminal session as mvn spring-boot:run: PowerShell $env:ODDS_API_KEY="your_key", Linux export ODDS_API_KEY=your_key.
+Check status: http://localhost:8080/api/health, the status of the the-odds-api provider must be CONFIGURED.
 
-### Kertoimien lähteet ja skräppäys
-**Sovellus ei skräppää vedonvälittäjien tai kerroinsivustojen verkkosivuja.** Se rikkoisi lähes varmasti käyttöehtoja (Veikkaus ja Paf kieltävät sen), vaatisi
-bot-suojausten kiertämistä (esim. Cloudflare) ja olisi hauras. Sen sijaan kertoimet tulevat näistä lähteistä:
-- **The Odds API** (`ODDS_API_KEY`): ilmainen kuukausikiintiö, moneyline.
-- **OddsPapi** (`ODDSPAPI_KEY`): ilmainen kehittäjäavain, aggregaattori; moneyline (markkina 151) NHL-otteluille. Skeema perustuu toimittajan omaan dokumentaatioon, eikä sitä ole testattu livenä.
-  `/api/health` listaa viimeksi nähdyt vedonvälittäjät (esim. onko `pinnacle` tai `paf` mukana). Rajaa kirjat asetuksella `ODDSPAPI_BOOKMAKERS`.
-- **Käsin syöttö** (Ehdotukset-sivu tai `POST /api/odds/manual`): kirjoita Veikkauksen tai Pafin kertoimet itse. Tallentuu tarjoajalle `manual:<nimi>`.
-- Veikkaus ja Paf: ei dokumentoitua julkista rajapintaa löytynyt, joten ne pysyvät tilassa NOT_INTEGRATED.
+Tests and Backtest
+cd backend && mvn test              # JUnit: EV, normalization, 1X2/ML, overtime, leakage, model probabilities
+curl -X POST "http://localhost:8080/api/backtest?warmup=100"   # walk-forward, model only (no historical odds)
+API
+GET /api/health, /api/games, /api/predictions/moneyline, /api/predictions/regulation, /api/combinations,
+/api/lineups, /api/stats/summary, /api/stats/accuracy?from=&to=, /api/history, /api/clv, /api/xg;
+POST /api/refresh, /api/backtest, /api/backtest/market, /api/import/odds, /api/import/xg.
 
-### Kerroinkiintiö (tärkeää)
-The Odds API:n ilmaisversiossa on kuukausikiintiö (arviolta ~500 krediittiä; kunkin kyselyn hinta riippuu markkinoiden ja alueiden määrästä, tämä sovellus
-pyytää 2 markkinaa). Siksi kertoimet haetaan oletuksena enintään **`ODDS_MIN_INTERVAL_MINUTES=240`** minuutin välein vaikka päivitys ajetaan 30 min välein.
-Jäljellä oleva kiintiö näkyy `/api/health`-vastauksessa ja dashboardin tarjoajatilassa.
-`CLOSING_CAPTURE=true` kerää kertoimia 10 min välein tuntia ennen pelejä, mikä kuluttaa kiintiön nopeasti; käytä vain maksullisella paketilla.
-Historiallista kerroinrajapintaa tämä sovellus ei käytä (sen saatavuus ilmaispaketissa on epävarma, tarkista tarjoajan hinnoittelu).
+Model Interpretation
+Model probability is an estimate, not a certainty. Predictions are experimental until at least MIN_SETTLED_FOR_VALIDATION predictions have been settled and calibration is verified.
 
-### Historialliset kertoimet CSV:stä (esim. Kaggle/SBR)
-    curl -X POST -F "file=@nhl_odds.csv" "http://localhost:8080/api/import/odds?format=american&source=pinnacle"
-Pakolliset sarakkeet: `date` (yyyy-MM-dd), `home_team`, `away_team`, `home_ml_close`, `away_ml_close`; valinnaiset `home_ml_open`, `away_ml_open`.
-`format=american` muuntaa kertoimet (+110 → 2.10, −130 → 1.77), `format=decimal` käyttää arvoja sellaisenaan. Joukkueet täsmätään nimillä, lyhenteillä ja
-yleisillä aliaksilla (NYRangers, LA Kings, Tampa Bay). Ottelun on oltava jo tietokannassa (aja ensin päivitys; `BACKFILL_FROM` määrää aloituspäivän).
-Vastaus kertoo täsmäytetyt, täsmäämättömät ja monitulkintaiset rivit. Tarkista aineiston lisenssi. OddsPortal-skräppäystä ei ole toteutettu, koska se
-rikkoo todennäköisesti sivuston ehtoja.
+EV % = 100·(p·odds − 1). Edge = model − normalized market prob. (percentage points). They measure different things.
 
-### Markkinabacktest
-    curl -X POST "http://localhost:8080/api/backtest/market?warmup=100&minEv=3&source=pinnacle"
-Walk-forward: malli ennustaa vain aiempien päivien datalla ja sitä verrataan sulkeutuvan moneylinen no-vig-todennäköisyyteen (Brier, log loss, parivertailun keskivirhe).
-Lisäksi raportoidaan liputettujen valintojen hypoteettinen tasapanosyksikkötuotto sulkeutumishinnoilla. Se ei ole kannattavuusväite.
-**Varoitus otoskoosta:** synteettisessä testissäni 700 pelin otos näytti +10 % "tuottoa" markkinaa vastaan, mutta 12 000 pelin otoksessa sama malli hävisi
-markkinalle (−4…−7 %). Pienet otokset valehtelevat; luota vain luottamusväleihin ja tuhansiin havaintoihin.
+Hit rate does not prove value. Compare Brier/log loss figures to uniform baselines (ML 0.500 / 0.693, 1X2 0.667 / 1.099).
 
-### xG
-    curl -X POST -F "file=@teams.csv" "http://localhost:8080/api/import/xg?season=2025"
-Odottaa MoneyPuck-tyylistä joukkue-CSV:tä (sarakkeet `team, games_played, xGoalsFor, xGoalsAgainst, goalsFor, goalsAgainst`, valinnaisesti `season, situation`;
-vain rivit `situation=all` luetaan; koodit T.B/N.J/S.J/L.A muunnetaan NHL-lyhenteiksi). Lataa data lähteen omalta sivulta ja tarkista käyttöehdot.
-xG näytetään ennusteiden yhteydessä **vain kontekstina**: kausitason xG ei ole ajanhetkikohtaista, joten sen käyttö mallissa tai backtestissä vuotaisi tulevaa tietoa.
-Mallin laajentaminen xG:llä vaatii ottelukohtaista dataa ja ablaatiotestin.
+Moneyline (incl. OT/SO) and 60 min 1X2 are always kept separate.
 
-## Rajoitukset (rehellisesti)
-- NHL-rajapinnan kenttänimet on toteutettu julkisen skeeman mukaan, mutta **ei ole testattu livenä** tässä ympäristössä.
-  Jos jokin kenttä poikkeaa, ensimmäinen päivitys raportoi virheen `NhlClient`-vaiheessa.
-- Veikkaus ja Paf: dokumentoitua, sallittua julkista rajapintaa ei ole; moduulit ovat tarkoituksella pois käytöstä.
-- CLV, CSV-tuonti, markkinabacktest ja xG-tuonti on toteutettu, mutta Spring-osia ei ole käännetty eikä ajettu kehitysympäristössä; ydinlaskenta (CLV, devig, CSV, markkinabacktest) on ajettu.
-- Kokoonpano-, loukkaantumis- ja maalivahtilähdettä ei ole integroitu: tila on UNKNOWN eikä vaikuta malliin.
-- Tietokantaskeema luodaan Hibernaten `ddl-auto: update` -asetuksella (ei versioituja migraatioita, esim. Flyway).
-- H2 käytössä SQLiten sijaan (luotettavampi JPA-tuki). Varmuuskopio: sulje sovellus ja kopioi `backend/data/`.
-- Mallin xG-, rasitus- ja pelaajavaikutukset puuttuvat; Poissonin riippumattomuusoletusta ei ole validoitu,
-  OT/SO-voittajan mallinnus on heuristinen. Yhdistelmät olettavat riippumattomuuden eri otteluiden välillä.
-- Ei CSRF-suojausta: API on evästeetön ja tarkoitettu paikalliseen käyttöön. Lisää autentikointi ennen julkaisua.
+CLV Analysis, Historical Odds, and xG
+CLV (Closing Line Value)
+GET /api/clv (and the dashboard's "CLV Analysis") compares the price of the model's flagged selections (best price in the pre-game stored snapshot) against the reference provider's closing line (default pinnacle, setting CLV_REFERENCE_PROVIDER).
+
+CLV % = (taken odds / closing odds − 1) · 100. Additionally, closing EV %, where the margin is removed from the entire closing market (power method) rather than assuming a fixed 3% margin.
+
+Results are split by market and by timing (<3 h, 3–12 h, ≥12 h before start). Starting goalies are not yet known, so early prediction CLV is typically skewed: evaluate groups separately.
+
+Includes a comparison of the model's Brier score against the closing line on settled games.
+
+A closing line is accepted only if it is recorded at most 180 minutes before start and the market is complete. Otherwise, the game is excluded.
+
+There is no real bet: the "taken price" is hypothetical. Comparing the best price across all providers against a single provider's closing line flatters CLV.
+
+Markets
+By default, only h2h is fetched (moneyline, ODDS_MARKETS=h2h). If you want to try 60 min 1X2 odds, set ODDS_MARKETS=h2h,h2h_3_way; if the provider rejects it (HTTP 422), the app automatically retries with just h2h and reports the reason in the refresh report. Without 3-way odds, the 1X2 column will show MARKET_UNAVAILABLE and will not be evaluated.
+
+Combination Suggestions
+GET /api/combinations?maxLegs=2|3 combines positive EV selections from different games only (same-game selections are not combined). For each combination, it displays the win probability with a margin of error, combined odds, model fair odds, EV ± standard error, z-score, "evidence" (WEAK/LOW/MODERATE), and EV if the market is right (showing margin compounding).
+The feature does not promise profit: win probability decreases with each selection, independence is assumed, standard error does not include model error, and the best combination on the list is overestimated due to selection bias.
+When the model is experimental, the recommendation is always NO_RECOMMENDATION_EXPERIMENTAL_MODEL.
+
+Odds Sources and Scraping
+The application does not scrape bookmaker or odds provider websites. Doing so would almost certainly violate terms of service (Veikkaus and Paf prohibit it), require bypassing bot protection (e.g., Cloudflare), and be fragile. Instead, odds come from these sources:
+
+The Odds API (ODDS_API_KEY): free monthly quota, moneyline.
+
+OddsPapi (ODDSPAPI_KEY): free developer key, aggregator; moneyline (market 151) for NHL games. The schema is based on the provider's own documentation and has not been tested live.
+/api/health lists recently seen bookmakers (e.g., whether pinnacle or paf is included). Filter books using the ODDSPAPI_BOOKMAKERS setting.
+
+Manual entry (Suggestions page or POST /api/odds/manual): type Veikkaus or Paf odds yourself. Saved under provider manual:<name>.
+
+Veikkaus and Paf: no documented public API found, so they remain in the NOT_INTEGRATED state.
+
+Odds Quota (Important)
+The free tier of The Odds API has a monthly quota (~500 credits estimated; the cost of each query depends on the number of markets and regions, this app requests 2 markets). Therefore, odds are fetched at most every ODDS_MIN_INTERVAL_MINUTES=240 minutes by default, even if updates run every 30 minutes.
+Remaining credits are shown in the /api/health response and the dashboard's provider status.
+CLOSING_CAPTURE=true collects odds every 10 minutes within an hour before games, which depletes the quota quickly; use only with a paid plan.
+This application does not use a historical odds API (its availability on the free tier is uncertain; check provider pricing).
+
+Historical Odds from CSV (e.g., Kaggle/SBR)
+curl -X POST -F "file=@nhl_odds.csv" "http://localhost:8080/api/import/odds?format=american&source=pinnacle"
+Mandatory columns: date (yyyy-MM-dd), home_team, away_team, home_ml_close, away_ml_close; optional home_ml_open, away_ml_open.
+format=american converts odds (+110 → 2.10, −130 → 1.77), format=decimal uses values as-is. Teams are matched by names, abbreviations, and common aliases (NYRangers, LA Kings, Tampa Bay). The game must already exist in the database (run an update first; BACKFILL_FROM determines the start date).
+The response reports matched, unmatched, and ambiguous rows. Check the dataset license. OddsPortal scraping is not implemented because it likely violates site terms.
+
+Market Backtest
+curl -X POST "http://localhost:8080/api/backtest/market?warmup=100&minEv=3&source=pinnacle"
+Walk-forward: the model predicts using only data from prior days and compares it against the closing moneyline no-vig probability (Brier, log loss, paired difference standard error).
+Additionally, the hypothetical flat-unit return of flagged selections at closing prices is reported. This is not a profitability claim.
+Warning on sample size: in a synthetic test, a sample of 700 games showed a +10% "return" against the market, but in a 12,000-game sample, the same model lost to the market (−4…−7%). Small samples lie; trust only confidence intervals and thousands of observations.
+
+xG
+curl -X POST -F "file=@teams.csv" "http://localhost:8080/api/import/xg?season=2025"
+Expects a MoneyPuck-style team CSV (columns team, games_played, xGoalsFor, xGoalsAgainst, goalsFor, goalsAgainst, optionally season, situation; only rows where situation=all are read; codes T.B/N.J/S.J/L.A are converted to NHL abbreviations). Download data from the source's own site and check terms of use.
+xG is displayed alongside predictions as context only: season-level xG is not point-in-time, so using it in the model or backtests would leak future data.
+Expanding the model with xG requires game-level data and an ablation test.
+
+Limitations (Honestly)
+NHL API field names follow the public schema but have not been tested live in this environment.
+If any field differs, the first update will report an error in the NhlClient stage.
+
+Veikkaus and Paf: no documented, permitted public API exists; modules are intentionally disabled.
+
+CLV, CSV import, market backtest, and xG import have been implemented, but Spring parts have not been compiled or run in a development environment; core math (CLV, devig, CSV, market backtest) has been run.
+
+Lineup, injury, and goalie sources are not integrated: status is UNKNOWN and does not affect the model.
+
+Database schema is created via Hibernate's ddl-auto: update setting (no versioned migrations like Flyway).
+
+H2 is used instead of SQLite (more reliable JPA support). Backup: close the application and copy backend/data/.
+
+Model xG, rest, and player impact features are missing; Poisson independence assumption is not validated,
+OT/SO winner modeling is heuristic. Combinations assume independence across different games.
+
+No CSRF protection: API is cookie-less and intended for local use. Add authentication before public deployment.
